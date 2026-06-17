@@ -1,0 +1,11 @@
+/.vs
+/HandyAgentFramework/bin
+/HandyAgentFramework/obj
+/HandyAgentFramework.Compaction/obj
+/HandyAgentFramework.Compaction/bin
+/HandyAgentFramework.SqliteFileStore/obj
+/HandyAgentFramework.SqliteFileStore/bin
+/HandyAgentFramework.Tests/obj
+/HandyAgentFramework.Tests/bin
+/TestResults
+/*.user

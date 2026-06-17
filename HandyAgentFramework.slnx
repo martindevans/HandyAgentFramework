@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="HandyAgentFramework.Compaction/HandyAgentFramework.Compaction.csproj" Id="354b7d14-7607-42b1-8a19-948cefceb9ab" />
+  <Project Path="HandyAgentFramework.SqliteFileStore/HandyAgentFramework.SqliteFileStore.csproj" />
+  <Project Path="HandyAgentFramework.Tests/HandyAgentFramework.Tests.csproj" Id="72f5faed-52c0-4869-858d-d917d6718150" />
+  <Project Path="HandyAgentFramework/HandyAgentFramework.csproj" />
+</Solution>
