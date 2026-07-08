@@ -1,9 +1,9 @@
-﻿using Microsoft.Agents.AI;
+﻿using Dapper;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.FileSystemGlobbing;
 using System.Data;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
-using Dapper;
 
 namespace HandyAgentFramework.SqliteFileStore
 {
@@ -24,7 +24,7 @@ namespace HandyAgentFramework.SqliteFileStore
     /// <summary>
     /// Provides an <see cref="AgentFileStore"/> which stores files in an SQLite database
     /// </summary>
-    public class SqliteFileStore
+    public sealed class SqliteFileStore
         : AgentFileStore
     {
         private readonly string _context;
@@ -41,100 +41,246 @@ namespace HandyAgentFramework.SqliteFileStore
             _database = database;
         }
 
-        private static async Task Init(IDbConnection connection)
+        private static async Task Init(IDbConnection connection, string context)
         {
+            // Store directories with a pointer to parent directory
+            await connection.ExecuteAsync(
+                """
+                CREATE TABLE IF NOT EXISTS `AgentFileStoreDirectorys` (
+                    `Context` TEXT NOT NULL,
+                    `ID` INTEGER PRIMARY KEY,
+                    `Name` TEXT NOT NULL,
+                    `ParentId` INTEGER NOT NULL, -- Root directory refers to self as it's own parent
+                    UNIQUE (Context, ParentId, Name),
+                    FOREIGN KEY (ParentId) REFERENCES AgentFileStoreDirectorys(ID)
+                );
+                """
+            );
+
+            // Store files with reference to the directory that owns them
             await connection.ExecuteAsync(
                 """
                 CREATE TABLE IF NOT EXISTS `AgentFileStoreFiles` (
                     `Context` TEXT NOT NULL,
-                    `DirectoryPath` TEXT NOT NULL,
+                    `Directory` INTEGER, --can be null! represents the root dir
                     `FileName` TEXT NOT NULL,
                     `Content` TEXT NOT NULL,
-                    PRIMARY KEY(`Context`, `DirectoryPath`, `FileName`)
+                    PRIMARY KEY(`Context`, `Directory`, `FileName`),
+                    FOREIGN KEY(Directory) REFERENCES AgentFileStoreDirectorys(ID)
                 );
                 """
             );
-        }
 
-        public override async Task WriteFileAsync(string path, string content, CancellationToken cancellationToken = new())
-        {
-            // Split path
-            var (directoryPath, fileName) = SplitPath(path);
-
-            // Get DB
-            using var connection = _database.GetConnection();
-            await Init(connection);
-
-            // Store file
-            var fileRecord = new AgentFileStoreFile(_context, directoryPath, fileName, NormalizeContent(content));
+            // Create root
             await connection.ExecuteAsync(
                 """
-                INSERT INTO `AgentFileStoreFiles` (`Context`, `DirectoryPath`, `FileName`, `Content`)
-                VALUES (@Context, @DirectoryPath, @FileName, @Content)
-                ON CONFLICT(`Context`, `DirectoryPath`, `FileName`) DO UPDATE SET `Content` = excluded.`Content`;
+                INSERT OR IGNORE INTO AgentFileStoreDirectorys (ID, Context, Name, ParentId)
+                VALUES (0, @Context, '', 0);
                 """,
-                fileRecord
+                new
+                {
+                    Context = context
+                }
             );
         }
 
-        public override async Task<string?> ReadFileAsync(string path, CancellationToken cancellationToken = new())
+        /// <summary>
+        /// Walk a path from the root locating a directory
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="context"></param>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        private static async Task<long?> GetDirectoryIdAsync(IDbConnection connection, string context, string path)
+        {
+            // Split path into components
+            var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            // Start at root directory
+            long directoryId = 0;
+
+            // Walk directory hierarchy
+            foreach (var part in parts)
+            {
+                // Find child directory
+                var childId = await connection.QuerySingleOrDefaultAsync<long?>(
+                    """
+                    SELECT ID
+                    FROM AgentFileStoreDirectorys
+                    WHERE Context = @Context
+                      AND Name = @Name
+                      AND ParentId = @ParentId;
+                    """,
+                    new
+                    {
+                        Context = context,
+                        Name = part,
+                        ParentId = directoryId,
+                    });
+
+                // Handle missing directory
+                if (childId is null)
+                    return null;
+
+                directoryId = childId.Value;
+            }
+
+            // Return resolved directory
+            return directoryId;
+        }
+
+        public override async Task WriteAsync(string path, string content, CancellationToken cancellationToken = new())
         {
             // Split path
             var (directoryPath, fileName) = SplitPath(path);
 
             // Get DB
             using var connection = _database.GetConnection();
-            await Init(connection);
+            await Init(connection, _context);
+
+            // Find directory
+            var directoryId = await GetDirectoryIdAsync(connection, _context, directoryPath);
+            if (directoryId is null)
+                throw new DirectoryNotFoundException($"Directory '{directoryPath}' does not exist.");
+
+            // Store file
+            await connection.ExecuteAsync(
+                """
+                INSERT INTO AgentFileStoreFiles (Context, Directory, FileName, Content)
+                VALUES (@Context, @Directory, @FileName, @Content)
+                ON CONFLICT(Context, Directory, FileName) DO UPDATE
+                SET Content = excluded.Content;
+                """,
+                new
+                {
+                    Context = _context,
+                    Directory = directoryId,
+                    FileName = fileName,
+                    Content = NormalizeContent(content),
+                }
+            );
+        }
+
+        public override async Task<string?> ReadAsync(string path, CancellationToken cancellationToken = new())
+        {
+            // Split path
+            var (directoryPath, fileName) = SplitPath(path);
+
+            // Get DB
+            using var connection = _database.GetConnection();
+            await Init(connection, _context);
+
+            // Find directory
+            var directoryId = await GetDirectoryIdAsync(connection, _context, directoryPath);
+            if (directoryId is null)
+                return null;
 
             // Query file content
             const string query = """
-                                 SELECT `Content`
-                                 FROM `AgentFileStoreFiles`
-                                 WHERE `Context` = @Context AND `DirectoryPath` = @DirectoryPath AND `FileName` = @FileName;
+                                 SELECT Content
+                                 FROM AgentFileStoreFiles
+                                 WHERE Context = @Context
+                                   AND Directory = @Directory
+                                   AND FileName = @FileName;
                                  """;
 
-            return await connection.QuerySingleOrDefaultAsync<string>(query, new { Context = _context, DirectoryPath = directoryPath, FileName = fileName });
+            return await connection.QuerySingleOrDefaultAsync<string>(
+                query,
+                new
+                {
+                    Context = _context,
+                    Directory = directoryId,
+                    FileName = fileName,
+                });
         }
 
-        public override async Task<bool> DeleteFileAsync(string path, CancellationToken cancellationToken = new())
+        public override async Task<bool> DeleteAsync(string path, CancellationToken cancellationToken = new())
         {
             // Split path
             var (directoryPath, fileName) = SplitPath(path);
 
             // Get DB
             using var connection = _database.GetConnection();
-            await Init(connection);
+            await Init(connection, _context);
+
+            // Find directory
+            var directoryId = await GetDirectoryIdAsync(connection, _context, directoryPath);
+            if (directoryId is null)
+                return false;
 
             // Delete file
             const string query = """
-                                 DELETE FROM `AgentFileStoreFiles`
-                                 WHERE `Context` = @Context AND `DirectoryPath` = @DirectoryPath AND `FileName` = @FileName;
+                                 DELETE FROM AgentFileStoreFiles
+                                 WHERE Context = @Context
+                                   AND Directory = @Directory
+                                   AND FileName = @FileName;
                                  """;
-            var affectedRows = await connection.ExecuteAsync(query, new { Context = _context, DirectoryPath = directoryPath, FileName = fileName });
-            
-            // Check if anything was deleted
+
+            var affectedRows = await connection.ExecuteAsync(
+                query,
+                new
+                {
+                    Context = _context,
+                    Directory = directoryId,
+                    FileName = fileName,
+                });
+
             return affectedRows > 0;
         }
 
-        public override async Task<IReadOnlyList<string>> ListFilesAsync(string directory, CancellationToken cancellationToken = new())
+        public override async Task<IReadOnlyList<FileStoreEntry>> ListChildrenAsync(string directory, CancellationToken cancellationToken = new())
         {
             // Normalize the directory path
             var normalizedDirectory = NormalizePath(directory);
 
             // Get DB connection
             using var connection = _database.GetConnection();
-            await Init(connection);
+            await Init(connection, _context);
 
-            // Query to list files in the specified directory
-            const string query = """
-                                 SELECT `FileName`
-                                 FROM `AgentFileStoreFiles`
-                                 WHERE `Context` = @Context AND `DirectoryPath` = @DirectoryPath;
-                                 """;
+            // Find directory
+            var directoryId = await GetDirectoryIdAsync(connection, _context, normalizedDirectory);
+            if (directoryId is null)
+                return [ ];
 
-            var fileNames = await connection.QueryAsync<string>(query, new { Context = _context, DirectoryPath = normalizedDirectory });
+            const string directoriesQuery = """
+                                            SELECT Name
+                                            FROM AgentFileStoreDirectorys
+                                            WHERE Context = @Context
+                                              AND ((ParentId IS NULL AND @ParentId IS NULL) OR ParentId = @ParentId)
+                                            ORDER BY Name;
+                                            """;
 
-            return fileNames.ToList();
+            const string filesQuery = """
+                                      SELECT FileName
+                                      FROM AgentFileStoreFiles
+                                      WHERE Context = @Context
+                                        AND Directory = @Directory
+                                      ORDER BY FileName;
+                                      """;
+
+            // Get directories
+            var directories = await connection.QueryAsync<string>(
+                directoriesQuery,
+                new
+                {
+                    Context = _context,
+                    ParentId = directoryId,
+                });
+
+            // Get files
+            var files = await connection.QueryAsync<string>(
+                filesQuery,
+                new
+                {
+                    Context = _context,
+                    Directory = directoryId,
+                });
+
+            return
+            [
+                ..directories.Select(x => new FileStoreEntry(x, FileStoreEntry.Directory)),
+                ..files.Select(x => new FileStoreEntry(x, FileStoreEntry.File)),
+            ];
         }
 
         public override async Task<bool> FileExistsAsync(string path, CancellationToken cancellationToken = new())
@@ -144,63 +290,169 @@ namespace HandyAgentFramework.SqliteFileStore
 
             // Get DB
             using var connection = _database.GetConnection();
-            await Init(connection);
+            await Init(connection, _context);
+
+            // Find directory
+            var directoryId = await GetDirectoryIdAsync(connection, _context, directoryPath);
+            if (directoryId is null)
+                return false;
 
             // Check if file exists
             const string query = """
                                  SELECT COUNT(1)
-                                 FROM `AgentFileStoreFiles`
-                                 WHERE `Context` = @Context AND `DirectoryPath` = @DirectoryPath AND `FileName` = @FileName;
+                                 FROM AgentFileStoreFiles
+                                 WHERE Context = @Context
+                                   AND Directory = @Directory
+                                   AND FileName = @FileName;
                                  """;
 
-            var count = await connection.ExecuteScalarAsync<int>(query, new { Context = _context, DirectoryPath = directoryPath, FileName = fileName });
+            var count = await connection.ExecuteScalarAsync<int>(
+                query,
+                new
+                {
+                    Context = _context,
+                    Directory = directoryId,
+                    FileName = fileName,
+                });
+
             return count > 0;
         }
 
-        public override async Task<IReadOnlyList<FileSearchResult>> SearchFilesAsync(string directory, string regexPattern, string? filePattern = null, CancellationToken cancellationToken = new())
+        public override async Task<IReadOnlyList<FileSearchResult>> SearchAsync(string directory, string regexPattern, string? globPattern = null, bool recursive = false, CancellationToken cancellationToken = default)
         {
-            // Normalize the directory path
             var normalizedDirectory = NormalizePath(directory);
 
-            // Get DB connection
+            // Get the DB
             using var connection = _database.GetConnection();
-            await Init(connection);
+            await Init(connection, _context);
 
-            // Build the query
-            const string query = """
-                                 SELECT *
-                                 FROM `AgentFileStoreFiles`
-                                 WHERE `Context` = @Context
-                                 AND `DirectoryPath` = @DirectoryPath
-                                 AND (@Glob IS NULL OR concat(`DirectoryPath`,'/',`FileName`) GLOB @Glob)
-                                 """;
+            // Get the directory we're searching
+            var directoryId = await GetDirectoryIdAsync(connection, _context, normalizedDirectory);
+            if (normalizedDirectory.Length > 0 && directoryId is null)
+                return [];
 
-            // Get the files in the directory, filtered by regex match on content
-            var files = (await connection.QueryAsync<AgentFileStoreFile>(query, new
+            // Build regex fir context
+            var regex = new Regex(regexPattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+            // Builder glob matcher
+            Matcher? matcher = null;
+            if (globPattern != null)
             {
-                Context = _context,
-                DirectoryPath = normalizedDirectory,
-                Glob = filePattern
-            })).ToList();
-
-            // Filter files
-            var regex = new Regex(regexPattern);
-            var results = new List<FileSearchResult>();
-            foreach (var file in files)
-            {
-                var r = SearchFile(file, regex, SnippetLength);
-                if (r != null)
-                    results.Add(r);
+                matcher = new Matcher(StringComparison.OrdinalIgnoreCase);
+                matcher.AddInclude(globPattern);
             }
 
+            // Extract results recursively
+            var results = new List<FileSearchResult>();
+            await SearchDirectory(connection, directoryId, "");
             return results;
+
+            async Task SearchDirectory(IDbConnection connection, long? parentId, string relativePath)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Get files in this directory
+                var files = await connection.QueryAsync<AgentFileStoreFile>(
+                    """
+                    SELECT Context, Directory, FileName, Content
+                    FROM AgentFileStoreFiles
+                    WHERE Context = @Context
+                      AND ((Directory IS NULL AND @Directory IS NULL) OR Directory = @Directory)
+                    """,
+                    new
+                    {
+                        Context = _context,
+                        Directory = parentId,
+                    });
+
+                // Glob match files
+                foreach (var file in files)
+                {
+                    var relativeFile = relativePath + file.FileName;
+
+                    if (matcher == null || matcher.Match(relativeFile).HasMatches)
+                    {
+                        var result = SearchFile(file, regex, 200);
+                        if (result != null)
+                            results.Add(result);
+                    }
+                }
+
+                if (!recursive)
+                    return;
+
+                // Get child directories
+                var directories = await connection.QueryAsync<(long ID, string Name)>(
+                    """
+                    SELECT ID, Name
+                    FROM AgentFileStoreDirectorys
+                    WHERE Context = @Context
+                      AND ((ParentId IS NULL AND @ParentId IS NULL) OR ParentId = @ParentId);
+                    """,
+                    new
+                    {
+                        Context = _context,
+                        ParentId = parentId,
+                    });
+
+                // Recursively search children
+                foreach (var (id, name) in directories)
+                    await SearchDirectory(connection, id, relativePath + name + "/");
+            }
         }
 
-        [ExcludeFromCodeCoverage]
-        public override Task CreateDirectoryAsync(string path, CancellationToken cancellationToken = new CancellationToken())
+        public override async Task CreateDirectoryAsync(string path, CancellationToken cancellationToken = default)
         {
-            // We store the path each file is in, so a directory does not actually need creating!
-            return Task.CompletedTask;
+            var normalizedPath = NormalizePath(path);
+            if (string.IsNullOrEmpty(normalizedPath))
+                return;
+
+            using var connection = _database.GetConnection();
+            await Init(connection, _context);
+
+            var parts = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            long parentId = 0;
+
+            foreach (var part in parts)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var id = await connection.QuerySingleOrDefaultAsync<long?>(
+                    """
+                    SELECT ID
+                    FROM AgentFileStoreDirectorys
+                    WHERE Context = @Context
+                      AND Name = @Name
+                      AND (
+                            (ParentId IS NULL AND @ParentId IS NULL)
+                         OR ParentId = @ParentId
+                      );
+                    """,
+                    new
+                    {
+                        Context = _context,
+                        Name = part,
+                        ParentId = parentId,
+                    }
+                );
+
+                id ??= await connection.QuerySingleAsync<long>(
+                    """
+                    INSERT INTO AgentFileStoreDirectorys (Context, Name, ParentId)
+                    VALUES (@Context, @Name, @ParentId)
+                    RETURNING ID;
+                    """,
+                    new
+                    {
+                        Context = _context,
+                        Name = part,
+                        ParentId = parentId,
+                    }
+                );
+
+                parentId = id.Value;
+            }
         }
 
         #region content normalisation
@@ -428,6 +680,7 @@ namespace HandyAgentFramework.SqliteFileStore
         }
         #endregion
 
-        private record AgentFileStoreFile(string Context, string DirectoryPath, string FileName, string Content);
+        private record AgentFileStoreFile(string Context, long Directory, string FileName, string Content);
+        private record AgentFileStoreDirectory(string Context, long ID, string Name, string? Parent);
     }
 }

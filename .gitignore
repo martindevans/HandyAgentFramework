@@ -7,5 +7,9 @@
 /HandyAgentFramework.SqliteFileStore/bin
 /HandyAgentFramework.Tests/obj
 /HandyAgentFramework.Tests/bin
+/HandyAgentFramework.FunctionCall/obj
+/HandyAgentFramework.FunctionCall/bin
+/HandyAgentFramework.SqliteSessionStore/obj
+/HandyAgentFramework.SqliteSessionStore/bin
 /TestResults
 /*.user

@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="HandyAgentFramework.Compaction/HandyAgentFramework.Compaction.csproj" Id="354b7d14-7607-42b1-8a19-948cefceb9ab" />
+  <Project Path="HandyAgentFramework.FunctionCall/HandyAgentFramework.FunctionCall.csproj" Id="2b91ac08-2162-4f67-99b3-0d93bab14981" />
   <Project Path="HandyAgentFramework.SqliteFileStore/HandyAgentFramework.SqliteFileStore.csproj" />
+  <Project Path="HandyAgentFramework.SqliteSessionStore/HandyAgentFramework.SqliteSessionStore.csproj" Id="75b8ad0e-6607-4ad6-85ea-30714561be26" />
   <Project Path="HandyAgentFramework.Tests/HandyAgentFramework.Tests.csproj" Id="72f5faed-52c0-4869-858d-d917d6718150" />
   <Project Path="HandyAgentFramework/HandyAgentFramework.csproj" />
 </Solution>
