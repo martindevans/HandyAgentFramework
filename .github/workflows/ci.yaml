@@ -15,7 +15,7 @@ jobs:
 
     env:
       BUILD_CONFIG: 'Release'
-      SOLUTION: 'HandyAgentFramework.sln'
+      SOLUTION: 'HandyAgentFramework.slnx'
 
     runs-on: ubuntu-22.04
 
