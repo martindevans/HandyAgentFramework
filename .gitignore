@@ -13,3 +13,7 @@
 /HandyAgentFramework.SqliteSessionStore/bin
 /TestResults
 /*.user
+/HandyAgentFramework.Embedding.SqliteCache/obj
+/HandyAgentFramework.Embedding.SqliteCache/bin
+/HandyAgentFramework.Embedding/bin
+/HandyAgentFramework.Embedding/obj

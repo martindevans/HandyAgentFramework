@@ -7,11 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.13.0" />
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="SemanticSearch\" />
+    <ProjectReference Include="..\HandyAgentFramework.Embedding\HandyAgentFramework.Embedding.csproj" />
   </ItemGroup>
 
 </Project>
