@@ -42,7 +42,7 @@ jobs:
         user: ${{ secrets.NUGET_USER }}
 
     - name: Copy Nupkg
-      run: cp **/*.nupkg .
+      run: find . -name '*.nupkg' -exec cp -f {} . \;
 
     - name: Publish
       if: github.event_name == 'push'
