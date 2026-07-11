@@ -43,4 +43,4 @@ jobs:
 
     - name: Publish
       if: github.event_name == 'push'
-      run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{ steps.login.outputs.NUGET_API_KEY }} -SkipDuplicate
+      run: dotnet nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{ steps.login.outputs.NUGET_API_KEY }} -SkipDuplicate
