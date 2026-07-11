@@ -14,8 +14,8 @@ public class ToolSearchProvider
     : AIContextProvider
 {
     #region tool docstrings
-    private const string ToolSearchDesc = "Request additional tools to be loaded based on a description of the functionality needed. Call" +
-                                          "this when you need capabilities that are not yet available in your current tool set.";
+    private const string ToolSearchDesc = "Request additional tools to be loaded based on a description of the functionality needed. Call " +
+                                          "this when you need capabilities that are not available in your current tool set.";
 
     private const string ToolSearchQueryDesc = """
                                                A description of the capabilities requires. Should be a short description including the following fields:
