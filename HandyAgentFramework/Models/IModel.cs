@@ -14,7 +14,7 @@ public interface IModel
 public interface IModelContext
     : IModel
 {
-    public uint ContextSize { get; }
+    public int ContextSize { get; }
 }
 
 /// <summary>
@@ -31,7 +31,7 @@ public interface IChatModel : ITextGenerationModel;
 public interface IEmbeddingModel
     : IModelContext
 {
-    public uint EmbeddingDimensions { get; }
+    public int EmbeddingDimensions { get; }
 }
 
 public interface IRerankingModel : IModelContext;
