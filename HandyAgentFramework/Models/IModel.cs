@@ -27,5 +27,11 @@ public interface ITextGenerationModel
 }
 
 public interface IChatModel : ITextGenerationModel;
-public interface IEmbeddingModel : IModelContext;
+
+public interface IEmbeddingModel
+    : IModelContext
+{
+    public uint EmbeddingDimensions { get; }
+}
+
 public interface IRerankingModel : IModelContext;
