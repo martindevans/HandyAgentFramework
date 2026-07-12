@@ -4,6 +4,7 @@
   <Project Path="HandyAgentFramework.Embedding/HandyAgentFramework.Embedding.csproj" Id="6d8e70fa-e4d0-4f8d-a082-635346fa6219" />
   <Project Path="HandyAgentFramework.FunctionCall/HandyAgentFramework.FunctionCall.csproj" Id="2b91ac08-2162-4f67-99b3-0d93bab14981" />
   <Project Path="HandyAgentFramework.SqliteFileStore/HandyAgentFramework.SqliteFileStore.csproj" />
+  <Project Path="HandyAgentFramework.SqliteFunctionCallLog/HandyAgentFramework.SqliteFunctionCallLog.csproj" Id="d4001d0f-17f4-4c11-ae09-2b405db6f7f8" />
   <Project Path="HandyAgentFramework.SqliteSessionStore/HandyAgentFramework.SqliteSessionStore.csproj" Id="75b8ad0e-6607-4ad6-85ea-30714561be26" />
   <Project Path="HandyAgentFramework.Tests/HandyAgentFramework.Tests.csproj" Id="72f5faed-52c0-4869-858d-d917d6718150" />
   <Project Path="HandyAgentFramework/HandyAgentFramework.csproj" />

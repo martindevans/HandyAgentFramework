@@ -17,3 +17,5 @@
 /HandyAgentFramework.Embedding.SqliteCache/bin
 /HandyAgentFramework.Embedding/bin
 /HandyAgentFramework.Embedding/obj
+/HandyAgentFramework.SqliteFunctionCallLog/obj
+/HandyAgentFramework.SqliteFunctionCallLog/bin

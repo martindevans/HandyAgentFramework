@@ -24,6 +24,9 @@ public interface ISqliteSessionStoreConnectionProvider
 /// <param name="Options"></param>
 public record SqliteSessionStoreSerializerOptions(JsonSerializerOptions Options);
 
+/// <summary>
+/// Stores sessions in an SQLite database
+/// </summary>
 public class SqliteSessionStore
     : ISessionStore
 {
@@ -33,7 +36,7 @@ public class SqliteSessionStore
     public SqliteSessionStore(ISqliteSessionStoreConnectionProvider database, SqliteSessionStoreSerializerOptions? options = null)
     {
         _database = database;
-        _options = options?.Options ?? new JsonSerializerOptions();
+        _options = options?.Options ?? new();
     }
 
     private static async Task Init(IDbConnection connection)

@@ -1,8 +1,6 @@
-﻿using System.Reflection.Metadata.Ecma335;
-using Microsoft.Agents.AI;
+﻿using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace HandyAgentFramework.Tests;
