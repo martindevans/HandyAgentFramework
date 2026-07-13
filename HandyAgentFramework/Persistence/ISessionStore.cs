@@ -40,6 +40,15 @@ public interface ISessionScope
 
 public static class ISessionStoreExtensions
 {
+    /// <summary>
+    /// Get a session scope, which is saved back to session storage when disposed
+    /// </summary>
+    /// <param name="store"></param>
+    /// <param name="context"></param>
+    /// <param name="key"></param>
+    /// <param name="agent"></param>
+    /// <param name="cancellation"></param>
+    /// <returns></returns>
     public static async Task<ISessionScope> GetSessionScope(this ISessionStore store, string context, string key, AIAgent agent, CancellationToken cancellation = default)
     {
         var session = await store.Load(context, key, agent, cancellation);

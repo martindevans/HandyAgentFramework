@@ -2,5 +2,5 @@
 
 public interface ISystemPrompt
 {
-    public string GetPrompt();
+    public string Prompt { get; }
 }

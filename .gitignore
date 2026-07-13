@@ -19,3 +19,5 @@
 /HandyAgentFramework.Embedding/obj
 /HandyAgentFramework.SqliteFunctionCallLog/obj
 /HandyAgentFramework.SqliteFunctionCallLog/bin
+/HandyAgentFramework.ImageAnalysis/bin
+/HandyAgentFramework.ImageAnalysis/obj
