@@ -99,7 +99,7 @@ public class ToolSearchProvider
             return new ToolSearchResult([]);
 
         // Search for tools that match the query
-        var queryResults = await _tools.Search(query, cancellation);
+        var queryResults = await _tools.Search(query, topK:_options.TopK, cancellation:cancellation);
         if (queryResults.Count == 0)
             return new ToolSearchResult([]);
 

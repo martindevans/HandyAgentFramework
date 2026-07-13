@@ -9,9 +9,10 @@ public interface IToolSet
     /// Perform a semantic search for tools that may match the given query
     /// </summary>
     /// <param name="query"></param>
+    /// <param name="topK">Number of results to return</param>
     /// <param name="cancellation"></param>
     /// <returns></returns>
-    Task<IReadOnlyList<SearchResult>> Search(string query, CancellationToken cancellation);
+    Task<IReadOnlyList<SearchResult>> Search(string query, int? topK = default, CancellationToken cancellation = default);
 
     /// <summary>
     /// Try to get a tool with the given name
