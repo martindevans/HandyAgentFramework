@@ -27,6 +27,12 @@ public interface IToolSet
     IEnumerable<ToolDefinition> DefaultTools();
 
     /// <summary>
+    /// Get all tools
+    /// </summary>
+    /// <returns></returns>
+    IEnumerable<ToolDefinition> Tools();
+    
+    /// <summary>
     /// Get all of the tools that belong to the given group ID
     /// </summary>
     /// <param name="group"></param>
