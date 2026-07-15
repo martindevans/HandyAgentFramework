@@ -36,7 +36,7 @@ public class SqliteSessionStore
     public SqliteSessionStore(ISqliteSessionStoreConnectionProvider database, SqliteSessionStoreSerializerOptions? options = null)
     {
         _database = database;
-        _options = options?.Options ?? new();
+        _options = options?.Options ?? JsonSerializerOptions.Default;
     }
 
     private static async Task Init(IDbConnection connection)
@@ -92,8 +92,10 @@ public class SqliteSessionStore
         await Init(connection);
 
         // JSON serialise
-        var jsonElement = await agent.SerializeSessionAsync(session, _options, cancellationToken: cancellation);
-        var json = jsonElement.ToString();
+        var json = JsonSerializer.Serialize(
+            await agent.SerializeSessionAsync(session, cancellationToken: cancellation),
+            _options
+        );
 
         // Save
         await connection.ExecuteAsync(
