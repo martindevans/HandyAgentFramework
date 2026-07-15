@@ -44,7 +44,7 @@ public class SqliteSessionStore
         // Store directories with a pointer to parent directory
         await connection.ExecuteAsync(
             """
-            CREATE TABLE IF NOT EXISTS KeyValueStore
+            CREATE TABLE IF NOT EXISTS HandyAgentFramework_SqliteSessionStore
             (
                 Context TEXT NOT NULL,
                 Key TEXT NOT NULL,
@@ -66,7 +66,7 @@ public class SqliteSessionStore
         var json = await connection.QuerySingleOrDefaultAsync<string>(
             """
             SELECT Json
-            FROM KeyValueStore
+            FROM HandyAgentFramework_SqliteSessionStore
             WHERE Context = @Context
               AND Key = @Key;
             """,
@@ -98,7 +98,7 @@ public class SqliteSessionStore
         // Save
         await connection.ExecuteAsync(
             """
-            INSERT INTO KeyValueStore (Context, Key, Json)
+            INSERT INTO HandyAgentFramework_SqliteSessionStore (Context, Key, Json)
             VALUES (@Context, @Key, @Json)
             ON CONFLICT(Context, Key) DO UPDATE
             SET Json = excluded.Json;
