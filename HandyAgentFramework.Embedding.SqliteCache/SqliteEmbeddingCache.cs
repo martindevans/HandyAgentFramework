@@ -35,7 +35,7 @@ public class SqliteEmbeddingCache
     {
         await connection.ExecuteAsync(
             """
-            CREATE TABLE IF NOT EXISTS `CachedEmbeddings` (
+            CREATE TABLE IF NOT EXISTS `HandyAgentFramework_CachedEmbeddings` (
                 `Value` TEXT NOT NULL,
                 `Model` TEXT NOT NULL,
                 `Dimensions` INTEGER NOT NULL,
@@ -46,7 +46,6 @@ public class SqliteEmbeddingCache
             """
         );
     }
-
 
     public async Task<EmbeddingResult> Embed(string text, CancellationToken cancellation = default)
     {
@@ -126,7 +125,7 @@ public class SqliteEmbeddingCache
     {
         var cached = await connection.QuerySingleOrDefaultAsync<CachedEmbedding>(
             """
-            UPDATE CachedEmbeddings
+            UPDATE HandyAgentFramework_CachedEmbeddings
             SET LastAccessTime = @Now
             WHERE Value = @Value
               AND Model = @Model
@@ -160,7 +159,7 @@ public class SqliteEmbeddingCache
     {
         await connection.ExecuteAsync(
             """
-            INSERT INTO CachedEmbeddings (
+            INSERT INTO HandyAgentFramework_CachedEmbeddings (
                 Value,
                 Model,
                 Dimensions,
