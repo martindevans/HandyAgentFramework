@@ -7,7 +7,7 @@ namespace HandyAgentFramework;
 /// </summary>
 public interface IToolProvider
 {
-    IEnumerable<ToolDefinition> Tool { get; }
+    IEnumerable<ToolDefinition> Tools { get; }
 }
 
 /// <summary>
