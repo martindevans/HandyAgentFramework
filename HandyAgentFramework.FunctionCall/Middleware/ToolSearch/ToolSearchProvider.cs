@@ -42,7 +42,7 @@ public class ToolSearchProvider
         _searchTool = AIFunctionFactory.Create(ToolSearch);
     }
 
-    protected override ValueTask<AIContext> ProvideAIContextAsync(InvokingContext context, CancellationToken cancellationToken = new CancellationToken())
+    protected override ValueTask<AIContext> ProvideAIContextAsync(InvokingContext context, CancellationToken cancellationToken = default)
     {
         // Get the tool search state
         var state = GetSessionState(context.Session);

@@ -45,5 +45,5 @@ public interface IToolSet
     /// </summary>
     /// <param name="Name">Name of the tool</param>
     /// <param name="Relevance">Relevance to the query (0 to 1)</param>
-    public record SearchResult(string Name, float Relevance);
+    public record SearchResult(string Name, float Relevance, ToolDefinition Tool);
 }
