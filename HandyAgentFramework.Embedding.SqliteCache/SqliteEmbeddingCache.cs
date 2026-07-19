@@ -187,5 +187,5 @@ public class SqliteEmbeddingCache
         );
     }
 
-    private record CachedEmbedding(string Value, string Model, int Dimensions, byte[] EmbeddingRaw, ulong LastAccessTime);
+    private record CachedEmbedding(string Value, string Model, long Dimensions, byte[] EmbeddingRaw, long LastAccessTime);
 }
