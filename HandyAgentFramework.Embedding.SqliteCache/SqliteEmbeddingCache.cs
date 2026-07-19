@@ -109,12 +109,8 @@ public class SqliteEmbeddingCache
                 results[batchIndices[i]] = batchEmbeddings[i];
 
             // Store results in cache
-            using (var tsx = connection.BeginTransaction())
-            {
-                foreach (var embeddingResult in batchEmbeddings)
-                    await StoreCachedEmbedding(connection, embeddingResult, now, tsx);
-                tsx.Commit();
-            }
+            foreach (var embeddingResult in batchEmbeddings)
+                await StoreCachedEmbedding(connection, embeddingResult, now, null);
         }
 
         // Return final results

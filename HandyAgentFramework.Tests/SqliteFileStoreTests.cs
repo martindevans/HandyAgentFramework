@@ -1,4 +1,5 @@
-﻿using HandyAgentFramework.SqliteFileStore;
+﻿using HandyAgentFramework.Embedding.SqliteCache;
+using HandyAgentFramework.SqliteFileStore;
 using System.Data;
 using System.Data.SQLite;
 using System.Reflection;
@@ -279,15 +280,16 @@ public sealed class SqliteFileStoreTests
 }
 
 public sealed class TestDatabaseProvider
-    : ISqliteFileStoreConnectionProvider, ISqliteSessionStoreConnectionProvider, IDisposable
+    : ISqliteFileStoreConnectionProvider, ISqliteSessionStoreConnectionProvider, ISqliteEmbeddingCacheConnectionProvider, IDisposable
 {
     private readonly IDbConnection _root;
     private readonly string _connStr;
 
     public TestDatabaseProvider()
     {
+        _connStr = $"Data Source={Random.Shared.GetHexString(8)}.db";
         _root = GetConnection();
-        _connStr = $"Data Source=file:{Random.Shared.GetHexString(128)}?mode=memory&cache=shared";
+        _root.Open();
     }
         
     public IDbConnection GetConnection()

@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\HandyAgentFramework.Compaction\HandyAgentFramework.Compaction.csproj" />
     <ProjectReference Include="..\HandyAgentFramework.SqliteFileStore\HandyAgentFramework.SqliteFileStore.csproj" />
+    <ProjectReference Include="..\HandyAgentFramework.Embedding.SqliteCache\HandyAgentFramework.Embedding.SqliteCache.csproj" />
     <ProjectReference Include="..\HandyAgentFramework.SqliteSessionStore\HandyAgentFramework.SqliteSessionStore.csproj" />
     <ProjectReference Include="..\HandyAgentFramework\HandyAgentFramework.csproj" />
   </ItemGroup>
