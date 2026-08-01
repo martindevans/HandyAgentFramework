@@ -1,5 +1,6 @@
 using HandyAgentFramework.Embedding;
 using HandyAgentFramework.Embedding.SqliteCache;
+using System.Numerics.Tensors;
 
 namespace HandyAgentFramework.Tests;
 
@@ -15,7 +16,7 @@ public sealed class SqliteEmbeddingCacheTests
         using var provider = new TestDatabaseProvider();
 
         var dummy = new DummyEmbeddingsProvider(dimensions: 4);
-        var cache = new SqliteEmbeddingCache(dummy, provider);
+        var cache = new SqliteEmbeddingCache<float>(dummy, provider);
 
         var result = await cache.Embed(INPUT_HELLO);
 
@@ -34,7 +35,7 @@ public sealed class SqliteEmbeddingCacheTests
         using var provider = new TestDatabaseProvider();
 
         var dummy = new DummyEmbeddingsProvider(dimensions: 4);
-        var cache = new SqliteEmbeddingCache(dummy, provider);
+        var cache = new SqliteEmbeddingCache<float>(dummy, provider);
 
         _ = await cache.Embed(INPUT_HELLO);
         var result = await cache.Embed(INPUT_HELLO);
@@ -51,7 +52,7 @@ public sealed class SqliteEmbeddingCacheTests
         using var provider = new TestDatabaseProvider();
 
         var dummy = new DummyEmbeddingsProvider(dimensions: 4);
-        var cache = new SqliteEmbeddingCache(dummy, provider);
+        var cache = new SqliteEmbeddingCache<float>(dummy, provider);
 
         var result1 = await cache.Embed(INPUT_HELLO);
         var result2 = await cache.Embed(INPUT_WORLD);
@@ -71,7 +72,7 @@ public sealed class SqliteEmbeddingCacheTests
         using var provider = new TestDatabaseProvider();
 
         var dummy = new DummyEmbeddingsProvider(dimensions: 4);
-        var cache = new SqliteEmbeddingCache(dummy, provider);
+        var cache = new SqliteEmbeddingCache<float>(dummy, provider);
 
         var texts = new[] { "hello", "world", "foo" };
         var results = await cache.Embed(texts);
@@ -92,7 +93,7 @@ public sealed class SqliteEmbeddingCacheTests
         using var provider = new TestDatabaseProvider();
 
         var dummy = new DummyEmbeddingsProvider(dimensions: 4);
-        var cache = new SqliteEmbeddingCache(dummy, provider);
+        var cache = new SqliteEmbeddingCache<float>(dummy, provider);
 
         // Warm up the cache with "hello" and "world"
         _ = await cache.Embed("hello");
@@ -121,8 +122,8 @@ public sealed class SqliteEmbeddingCacheTests
         var embeddingA = new DummyEmbeddingsProvider(dimensions: 2, model: "model-a");
         var embeddingB = new DummyEmbeddingsProvider(dimensions: 3, model: "model-b");
 
-        var cacheA = new SqliteEmbeddingCache(embeddingA, provider);
-        var cacheB = new SqliteEmbeddingCache(embeddingB, provider);
+        var cacheA = new SqliteEmbeddingCache<float>(embeddingA, provider);
+        var cacheB = new SqliteEmbeddingCache<float>(embeddingB, provider);
 
         // Cache embedding with model A
         var resultA = await cacheA.Embed(INPUT_HELLO);
@@ -149,7 +150,7 @@ public sealed class SqliteEmbeddingCacheTests
     }
 
     private sealed class DummyEmbeddingsProvider
-        : IEmbeddings
+        : IEmbeddings<float>
     {
         public DummyEmbeddingsProvider(int dimensions, string? model = null)
         {
@@ -161,25 +162,39 @@ public sealed class SqliteEmbeddingCacheTests
 
         public string Model { get; }
         public int Dimensions { get; }
-
-        public async Task<EmbeddingResult> Embed(string text, CancellationToken cancellation = default)
+        
+        public EmbeddingResult<float> Create(string input, Memory<float> elements)
         {
-            CallCount++;
-            return new EmbeddingResult(text, Model, Embed(text));
+            return new DummyEmbedding(input, Model, elements);
         }
 
-        public async Task<IReadOnlyList<EmbeddingResult>> Embed(IReadOnlyList<string> texts, CancellationToken cancellation = default)
+        public async Task<EmbeddingResult<float>> Embed(string text, CancellationToken cancellation = default)
         {
             CallCount++;
-            var results = new List<EmbeddingResult>();
+            return Create(text, Embed(text));
+        }
+
+        public async Task<IReadOnlyList<EmbeddingResult<float>>> Embed(IReadOnlyList<string> texts, CancellationToken cancellation = default)
+        {
+            CallCount++;
+            var results = new List<EmbeddingResult<float>>();
             foreach (var text in texts)
-                results.Add(new EmbeddingResult(text, Model, Embed(text)));
+                results.Add(Create(text, Embed(text)));
             return results;
         }
 
         private float[] Embed(string text)
         {
             return SqliteEmbeddingCacheTests.Embed(text, Dimensions);
+        }
+
+        public record DummyEmbedding(string Input, string Model, Memory<float> Result)
+            : EmbeddingResult<float>(Input, Model, Result)
+        {
+            public override float Similarity(EmbeddingResult<float> other)
+            {
+                return TensorPrimitives.Dot(Result.Span, other.Result.Span);
+            }
         }
     }
 }

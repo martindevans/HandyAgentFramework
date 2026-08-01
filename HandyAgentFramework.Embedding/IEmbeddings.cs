@@ -3,7 +3,7 @@
 /// <summary>
 /// Provides functions to embed text
 /// </summary>
-public interface IEmbeddings
+public interface IEmbeddings<TElement>
 {
     /// <summary>
     /// Embed a single item
@@ -11,7 +11,7 @@ public interface IEmbeddings
     /// <param name="text"></param>
     /// <param name="cancellation"></param>
     /// <returns></returns>
-    Task<EmbeddingResult> Embed(string text, CancellationToken cancellation = default);
+    Task<EmbeddingResult<TElement>> Embed(string text, CancellationToken cancellation = default);
 
     /// <summary>
     /// Embed many items in one request
@@ -19,7 +19,7 @@ public interface IEmbeddings
     /// <param name="text"></param>
     /// <param name="cancellation"></param>
     /// <returns></returns>
-    Task<IReadOnlyList<EmbeddingResult>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default);
+    Task<IReadOnlyList<EmbeddingResult<TElement>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default);
 
     /// <summary>
     /// The name of model used for embeddings generation
@@ -30,6 +30,14 @@ public interface IEmbeddings
     /// The dimensionality of embeddings
     /// </summary>
     int Dimensions { get; }
+
+    /// <summary>
+    /// Create an embedding result from precalculated data
+    /// </summary>
+    /// <param name="input"></param>
+    /// <param name="elements"></param>
+    /// <returns></returns>
+    EmbeddingResult<TElement> Create(string input, Memory<TElement> elements);
 }
 
 /// <summary>
@@ -38,4 +46,12 @@ public interface IEmbeddings
 /// <param name="Input">String that was embedded</param>
 /// <param name="Model">Model name</param>
 /// <param name="Result">The actual embedding</param>
-public record EmbeddingResult(string Input, string Model, Memory<float> Result);
+public abstract record EmbeddingResult<TElement>(string Input, string Model, Memory<TElement> Result)
+{
+    /// <summary>
+    /// Calculate the similarity between this embedding and another. Models must match.
+    /// </summary>
+    /// <param name="other"></param>
+    /// <returns></returns>
+    public abstract float Similarity(EmbeddingResult<TElement> other);
+}

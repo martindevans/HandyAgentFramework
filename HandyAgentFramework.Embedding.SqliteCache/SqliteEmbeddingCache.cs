@@ -5,7 +5,7 @@ using Dapper;
 namespace HandyAgentFramework.Embedding.SqliteCache;
 
 /// <summary>
-/// Provides a connection to an SQLite database for <see cref="SqliteEmbeddingCache"/>
+/// Provides a connection to an SQLite database for <see cref="SqliteEmbeddingCache{TElement}"/>
 /// </summary>
 public interface ISqliteEmbeddingCacheConnectionProvider
 {
@@ -16,16 +16,17 @@ public interface ISqliteEmbeddingCacheConnectionProvider
     IDbConnection GetConnection();
 }
 
-public class SqliteEmbeddingCache
-    : IEmbeddings
+public class SqliteEmbeddingCache<TElement>
+    : IEmbeddings<TElement>
+    where TElement : struct
 {
     private readonly ISqliteEmbeddingCacheConnectionProvider _database;
 
-    private readonly IEmbeddings _embeddings;
+    private readonly IEmbeddings<TElement> _embeddings;
     public string Model => _embeddings.Model;
     public int Dimensions => _embeddings.Dimensions;
 
-    public SqliteEmbeddingCache(IEmbeddings embeddings, ISqliteEmbeddingCacheConnectionProvider database)
+    public SqliteEmbeddingCache(IEmbeddings<TElement> embeddings, ISqliteEmbeddingCacheConnectionProvider database)
     {
         _embeddings = embeddings;
         _database = database;
@@ -47,7 +48,7 @@ public class SqliteEmbeddingCache
         );
     }
 
-    public async Task<EmbeddingResult> Embed(string text, CancellationToken cancellation = default)
+    public async Task<EmbeddingResult<TElement>> Embed(string text, CancellationToken cancellation = default)
     {
         // Get DB
         using var connection = _database.GetConnection();
@@ -71,14 +72,14 @@ public class SqliteEmbeddingCache
         return embedding;
     }
 
-    public async Task<IReadOnlyList<EmbeddingResult>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default)
+    public async Task<IReadOnlyList<EmbeddingResult<TElement>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default)
     {
         // Get DB
         using var connection = _database.GetConnection();
         await Init(connection);
             
         // Create output array and batch of work to do
-        var results = new EmbeddingResult[text.Count];
+        var results = new EmbeddingResult<TElement>[text.Count];
         var batch = new List<string>();
         var batchIndices = new List<int>();
             
@@ -117,7 +118,7 @@ public class SqliteEmbeddingCache
         return results;
     }
 
-    private async Task<EmbeddingResult?> FetchCachedEmbedding(string text, IDbConnection connection, ulong now)
+    private async Task<EmbeddingResult<TElement>?> FetchCachedEmbedding(string text, IDbConnection connection, ulong now)
     {
         var cached = await connection.QuerySingleOrDefaultAsync<CachedEmbedding>(
             """
@@ -144,14 +145,13 @@ public class SqliteEmbeddingCache
         if (cached == null)
             return null;
 
-        return new EmbeddingResult(
+        return _embeddings.Create(
             text,
-            Model,
-            MemoryMarshal.Cast<byte, float>(cached.EmbeddingRaw.AsSpan()).ToArray()
+            MemoryMarshal.Cast<byte, TElement>(cached.EmbeddingRaw.AsSpan()).ToArray()
         );
     }
 
-    private static async Task StoreCachedEmbedding(IDbConnection connection, EmbeddingResult embedding, ulong now, IDbTransaction? tsx)
+    private static async Task StoreCachedEmbedding(IDbConnection connection, EmbeddingResult<TElement> embedding, ulong now, IDbTransaction? tsx)
     {
         await connection.ExecuteAsync(
             """
@@ -176,11 +176,16 @@ public class SqliteEmbeddingCache
                 Value = embedding.Input,
                 Model = embedding.Model,
                 Dimensions = embedding.Result.Length,
-                EmbeddingRaw = MemoryMarshal.Cast<float, byte>(embedding.Result.Span).ToArray(),
+                EmbeddingRaw = MemoryMarshal.Cast<TElement, byte>(embedding.Result.Span).ToArray(),
                 LastAccessTime = now,
             },
             transaction: tsx
         );
+    }
+
+    public EmbeddingResult<TElement> Create(string input, Memory<TElement> elements)
+    {
+        return _embeddings.Create(input, elements);
     }
 
     private record CachedEmbedding(string Value, string Model, long Dimensions, byte[] EmbeddingRaw, long LastAccessTime);
