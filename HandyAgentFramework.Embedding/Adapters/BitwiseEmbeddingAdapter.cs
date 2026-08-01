@@ -21,7 +21,7 @@ public class BitwiseEmbeddingAdapter
         Dimensions = _inner.Dimensions;
     }
 
-    public async Task<EmbeddingResult<byte>> Embed(string text, CancellationToken cancellation = default)
+    public async Task<IEmbeddingResult<byte>> Embed(string text, CancellationToken cancellation = default)
     {
         var inner = await _inner.Embed(text, cancellation);
 
@@ -32,10 +32,10 @@ public class BitwiseEmbeddingAdapter
         );
     }
 
-    public async Task<IReadOnlyList<EmbeddingResult<byte>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default)
+    public async Task<IReadOnlyList<IEmbeddingResult<byte>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default)
     {
         var inner = await _inner.Embed(text, cancellation);
-        var result = new List<EmbeddingResult<byte>>(inner.Count);
+        var result = new List<IEmbeddingResult<byte>>(inner.Count);
 
         foreach (var item in inner)
         {
@@ -75,15 +75,15 @@ public class BitwiseEmbeddingAdapter
         return bytes;
     }
 
-    public EmbeddingResult<byte> Create(string input, Memory<byte> elements)
+    public IEmbeddingResult<byte> Create(string input, Memory<byte> elements)
     {
         return new ByteEmbedding(input, Model, elements);
     }
 
     public record ByteEmbedding(string Input, string Model, Memory<byte> Result)
-        : EmbeddingResult<byte>(Input, Model, Result)
+        : EmbeddingResult<ByteEmbedding, byte>(Input, Model, Result)
     {
-        public override float Similarity(EmbeddingResult<byte> other)
+        public override float Similarity(ByteEmbedding other)
         {
             if (Model != other.Model)
                 throw new ArgumentException($"Cannot compare embeddings with different models. {Model} != {other.Model}", nameof(other));

@@ -48,7 +48,7 @@ public class SqliteEmbeddingCache<TElement>
         );
     }
 
-    public async Task<EmbeddingResult<TElement>> Embed(string text, CancellationToken cancellation = default)
+    public async Task<IEmbeddingResult<TElement>> Embed(string text, CancellationToken cancellation = default)
     {
         // Get DB
         using var connection = _database.GetConnection();
@@ -72,14 +72,14 @@ public class SqliteEmbeddingCache<TElement>
         return embedding;
     }
 
-    public async Task<IReadOnlyList<EmbeddingResult<TElement>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default)
+    public async Task<IReadOnlyList<IEmbeddingResult<TElement>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default)
     {
         // Get DB
         using var connection = _database.GetConnection();
         await Init(connection);
             
         // Create output array and batch of work to do
-        var results = new EmbeddingResult<TElement>[text.Count];
+        var results = new IEmbeddingResult<TElement>[text.Count];
         var batch = new List<string>();
         var batchIndices = new List<int>();
             
@@ -118,7 +118,7 @@ public class SqliteEmbeddingCache<TElement>
         return results;
     }
 
-    private async Task<EmbeddingResult<TElement>?> FetchCachedEmbedding(string text, IDbConnection connection, ulong now)
+    private async Task<IEmbeddingResult<TElement>?> FetchCachedEmbedding(string text, IDbConnection connection, ulong now)
     {
         var cached = await connection.QuerySingleOrDefaultAsync<CachedEmbedding>(
             """
@@ -151,7 +151,7 @@ public class SqliteEmbeddingCache<TElement>
         );
     }
 
-    private static async Task StoreCachedEmbedding(IDbConnection connection, EmbeddingResult<TElement> embedding, ulong now, IDbTransaction? tsx)
+    private static async Task StoreCachedEmbedding(IDbConnection connection, IEmbeddingResult<TElement> embedding, ulong now, IDbTransaction? tsx)
     {
         await connection.ExecuteAsync(
             """
@@ -183,7 +183,7 @@ public class SqliteEmbeddingCache<TElement>
         );
     }
 
-    public EmbeddingResult<TElement> Create(string input, Memory<TElement> elements)
+    public IEmbeddingResult<TElement> Create(string input, Memory<TElement> elements)
     {
         return _embeddings.Create(input, elements);
     }

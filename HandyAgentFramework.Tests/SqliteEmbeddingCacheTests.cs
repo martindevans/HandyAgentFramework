@@ -163,35 +163,35 @@ public sealed class SqliteEmbeddingCacheTests
         public string Model { get; }
         public int Dimensions { get; }
         
-        public EmbeddingResult<float> Create(string input, Memory<float> elements)
+        public IEmbeddingResult<float> Create(string input, Memory<float> elements)
         {
             return new DummyEmbedding(input, Model, elements);
         }
 
-        public async Task<EmbeddingResult<float>> Embed(string text, CancellationToken cancellation = default)
+        public async Task<IEmbeddingResult<float>> Embed(string text, CancellationToken cancellation = default)
         {
             CallCount++;
-            return Create(text, Embed(text));
+            return Create(text, EmbedText(text));
         }
 
-        public async Task<IReadOnlyList<EmbeddingResult<float>>> Embed(IReadOnlyList<string> texts, CancellationToken cancellation = default)
+        public async Task<IReadOnlyList<IEmbeddingResult<float>>> Embed(IReadOnlyList<string> texts, CancellationToken cancellation = default)
         {
             CallCount++;
-            var results = new List<EmbeddingResult<float>>();
+            var results = new List<IEmbeddingResult<float>>();
             foreach (var text in texts)
-                results.Add(Create(text, Embed(text)));
+                results.Add(Create(text, EmbedText(text)));
             return results;
         }
 
-        private float[] Embed(string text)
+        private float[] EmbedText(string text)
         {
             return SqliteEmbeddingCacheTests.Embed(text, Dimensions);
         }
 
         public record DummyEmbedding(string Input, string Model, Memory<float> Result)
-            : EmbeddingResult<float>(Input, Model, Result)
+            : EmbeddingResult<DummyEmbedding, float>(Input, Model, Result)
         {
-            public override float Similarity(EmbeddingResult<float> other)
+            public override float Similarity(DummyEmbedding other)
             {
                 return TensorPrimitives.Dot(Result.Span, other.Result.Span);
             }

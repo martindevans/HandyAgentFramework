@@ -13,7 +13,7 @@ public interface IEmbeddings<TElement>
     /// <param name="text"></param>
     /// <param name="cancellation"></param>
     /// <returns></returns>
-    Task<EmbeddingResult<TElement>> Embed(string text, CancellationToken cancellation = default);
+    Task<IEmbeddingResult<TElement>> Embed(string text, CancellationToken cancellation = default);
 
     /// <summary>
     /// Embed many items in one request
@@ -21,7 +21,7 @@ public interface IEmbeddings<TElement>
     /// <param name="text"></param>
     /// <param name="cancellation"></param>
     /// <returns></returns>
-    Task<IReadOnlyList<EmbeddingResult<TElement>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default);
+    Task<IReadOnlyList<IEmbeddingResult<TElement>>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default);
 
     /// <summary>
     /// The name of model used for embeddings generation
@@ -39,7 +39,21 @@ public interface IEmbeddings<TElement>
     /// <param name="input"></param>
     /// <param name="elements"></param>
     /// <returns></returns>
-    EmbeddingResult<TElement> Create(string input, Memory<TElement> elements);
+    IEmbeddingResult<TElement> Create(string input, Memory<TElement> elements);
+}
+
+public interface IEmbeddingResult
+{
+    string Input { get; }
+    string Model { get; }
+
+    float Similarity(IEmbeddingResult other);
+}
+
+public interface IEmbeddingResult<TElement>
+    : IEmbeddingResult
+{
+    public Memory<TElement> Result { get; }
 }
 
 /// <summary>
@@ -48,14 +62,28 @@ public interface IEmbeddings<TElement>
 /// <param name="Input">String that was embedded</param>
 /// <param name="Model">Model name</param>
 /// <param name="Result">The actual embedding</param>
-public abstract record EmbeddingResult<TElement>(string Input, string Model, Memory<TElement> Result)
+public abstract record EmbeddingResult<TSelf, TElement>(string Input, string Model, Memory<TElement> Result)
+    : IEmbeddingResult<TElement>
+    where TSelf : EmbeddingResult<TSelf, TElement>
 {
     /// <summary>
     /// Calculate the similarity between this embedding and another. Models must match.
     /// </summary>
     /// <param name="other"></param>
     /// <returns></returns>
-    public abstract float Similarity(EmbeddingResult<TElement> other);
+    public abstract float Similarity(TSelf other);
+
+    /// <summary>
+    /// Calculate the similarity between this embedding and another. Models and embedding types must match.
+    /// </summary>
+    /// <param name="other"></param>
+    /// <returns></returns>
+    public float Similarity(IEmbeddingResult other)
+    {
+        if (other is not TSelf typedOther)
+            throw new InvalidOperationException($"Cannot compare embeddings of type {GetType().Name} and {other.GetType().Name}");
+        return Similarity(typedOther);
+    }
 }
 
 /// <summary>
@@ -65,9 +93,9 @@ public abstract record EmbeddingResult<TElement>(string Input, string Model, Mem
 /// <param name="Model"></param>
 /// <param name="Result"></param>
 public record FloatEmbeddingResult(string Input, string Model, Memory<float> Result)
-    : EmbeddingResult<float>(Input, Model, Result)
+    : EmbeddingResult<FloatEmbeddingResult, float>(Input, Model, Result)
 {
-    public override float Similarity(EmbeddingResult<float> other)
+    public override float Similarity(FloatEmbeddingResult other)
     {
         return TensorPrimitives.Dot(Result.Span, other.Result.Span);
     }
