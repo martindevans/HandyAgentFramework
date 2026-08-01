@@ -2,6 +2,23 @@
 
 namespace HandyAgentFramework.Embedding;
 
+public interface IEmbeddings
+{
+    Task<IEmbeddingResult> Embed(string text, CancellationToken cancellation = default);
+
+    Task<IReadOnlyList<IEmbeddingResult>> Embed(IReadOnlyList<string> text, CancellationToken cancellation = default);
+
+    /// <summary>
+    /// The name of model used for embeddings generation
+    /// </summary>
+    string Model { get; }
+
+    /// <summary>
+    /// The dimensionality of embeddings
+    /// </summary>
+    int Dimensions { get; }
+}
+
 /// <summary>
 /// Provides functions to embed text
 /// </summary>
