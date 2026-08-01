@@ -1,4 +1,6 @@
-﻿namespace HandyAgentFramework.Embedding;
+﻿using System.Numerics.Tensors;
+
+namespace HandyAgentFramework.Embedding;
 
 /// <summary>
 /// Provides functions to embed text
@@ -54,4 +56,19 @@ public abstract record EmbeddingResult<TElement>(string Input, string Model, Mem
     /// <param name="other"></param>
     /// <returns></returns>
     public abstract float Similarity(EmbeddingResult<TElement> other);
+}
+
+/// <summary>
+/// Result of an embedding operation that produce floating point values
+/// </summary>
+/// <param name="Input"></param>
+/// <param name="Model"></param>
+/// <param name="Result"></param>
+public record FloatEmbeddingResult(string Input, string Model, Memory<float> Result)
+    : EmbeddingResult<float>(Input, Model, Result)
+{
+    public override float Similarity(EmbeddingResult<float> other)
+    {
+        return TensorPrimitives.Dot(Result.Span, other.Result.Span);
+    }
 }
